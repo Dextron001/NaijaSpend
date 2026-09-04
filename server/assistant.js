@@ -1,5 +1,28 @@
 import { buildInsights } from './insights.js';
-import { naira, todayISO, currentMonth, addMonths, monthLabel } from './util.js';
+import { naira, todayISO, currentMonth, addMonths, pad2, monthLabel } from './util.js';
+
+const MONTH_WORDS = [
+  ['january', 'jan'], ['february', 'feb'], ['march', 'mar'], ['april', 'apr'],
+  ['may', 'may'], ['june', 'jun'], ['july', 'jul'], ['august', 'aug'],
+  ['september', 'sep'], ['october', 'oct'], ['november', 'nov'], ['december', 'dec'],
+];
+
+/** Understand "last month", "this month", or an explicit month name in the question. */
+function detectMonth(text, curKey) {
+  const t = String(text || '').toLowerCase();
+  if (/\blast month\b|\bprevious month\b/.test(t)) return addMonths(curKey, -1);
+  if (/\bthis month\b|\bcurrent month\b/.test(t)) return curKey;
+  for (let i = 0; i < 12; i++) {
+    const [full, abbr] = MONTH_WORDS[i];
+    if (new RegExp(`\\b(${full}|${abbr})\\b`).test(t)) {
+      const [y] = curKey.split('-').map(Number);
+      let key = `${y}-${pad2(i + 1)}`;
+      if (key > curKey) key = `${y - 1}-${pad2(i + 1)}`; // "in January" said in September → this year's January
+      return key;
+    }
+  }
+  return null;
+}
 
 function parseAmount(text) {
   const m = text.replace(/,/g, '').match(/₦?\s*(\d+(?:\.\d+)?)\s*(k|m)?/i);
@@ -136,7 +159,9 @@ const forecastHelper = forecastFmtExport; // keep referenced
 void forecastHelper;
 
 export async function answer(db, user, message, history = []) {
-  const ins = buildInsights(db, user.id, currentMonth());
+  const curKey = currentMonth();
+  const requested = detectMonth(message, curKey);
+  const ins = buildInsights(db, user.id, requested || curKey);
   const fallback = ruleReply(String(message || ''), ins, []);
 
   // Optional LLM enhancement: set OPENAI_API_KEY (any OpenAI-compatible endpoint) to enable.

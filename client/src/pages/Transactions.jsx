@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { currentMonth, fmtSmart, fmt0, fmtDateShort } from '../format.js';
 import { Loading, EmptyState, ErrorNote } from '../components/ui.jsx';
 import { useTxModal } from '../components/Layout.jsx';
+import ImportModal from '../components/ImportModal.jsx';
 import { IconSearch, IconPencil, IconTrash, IconDownload, IconChevronLeft, IconChevronRight, IconPlus } from '../components/Icons.jsx';
 
 export default function Transactions() {
@@ -14,6 +15,8 @@ export default function Transactions() {
   const [data, setData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
   const { openTx } = useTxModal();
 
   const load = useCallback(() => {
@@ -32,6 +35,11 @@ export default function Transactions() {
     window.addEventListener('tx-changed', h);
     return () => window.removeEventListener('tx-changed', h);
   }, [load]);
+  useEffect(() => {
+    const h = () => { setNotice('✅ Imported transactions added to your ledger.'); setTimeout(() => setNotice(''), 6000); };
+    window.addEventListener('tx-changed', h);
+    return () => window.removeEventListener('tx-changed', h);
+  }, []);
 
   const remove = async (t) => {
     if (!window.confirm(`Delete "${t.description || t.category_name}" (${fmtSmart(t.amount)})?`)) return;
@@ -63,6 +71,7 @@ export default function Transactions() {
           <p className="page-sub">Every Naira, accounted for</p>
         </div>
         <div className="head-actions">
+          <button className="btn btn-ghost" onClick={() => setImportOpen(true)}>📥 Import alerts</button>
           <button className="btn btn-ghost" onClick={exportCsv}><IconDownload size={15} /> Export CSV</button>
           <button className="btn btn-primary" onClick={() => openTx()}><IconPlus size={16} /> Add</button>
         </div>
@@ -94,6 +103,7 @@ export default function Transactions() {
         </div>
       )}
 
+      {notice && <div className="form-msg">{notice}</div>}
       <ErrorNote>{error}</ErrorNote>
 
       {!data ? <Loading label="Loading transactions…" /> : data.items.length === 0 ? (
@@ -133,6 +143,8 @@ export default function Transactions() {
           )}
         </div>
       )}
+
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} categories={categories} />
     </div>
   );
 }

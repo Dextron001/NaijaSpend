@@ -11,7 +11,7 @@ const SUGGESTIONS = [
   'Can I afford 150k for a laptop?',
   "What's my savings rate?",
   'Any unusual spending?',
-  'Forecast my spending for next month',
+  'How much did I spend last month?',
   'Where is my money going?',
 ];
 

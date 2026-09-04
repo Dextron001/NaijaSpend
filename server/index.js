@@ -12,6 +12,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import insightsRoutes from './routes/insights.js';
 import assistantRoutes from './routes/assistant.js';
 import exportRoutes from './routes/export.js';
+import importRoutes from './routes/import.js';
 import { ensureDemoUser } from './seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,7 @@ api.use('/dashboard', dashboardRoutes);
 api.use('/insights', insightsRoutes);
 api.use('/assistant', assistantRoutes);
 api.use('/export', exportRoutes);
+api.use('/import', importRoutes);
 api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use('/api', api);
 

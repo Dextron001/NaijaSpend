@@ -19,7 +19,9 @@ your *actual* numbers.
 | 🏁 **Goals** | Savings goals with targets, deadlines, progress tracking and quick contributions |
 | 📊 **Dashboard** | Income/spending/net/savings-rate stat cards, 6-month income-vs-spend chart, category donut, budget snapshot, recent activity |
 | 🤖 **AI Insights** | Financial health score (0–100 with breakdown), spending anomaly detection, unusually-large-transaction flags, month-over-month movers, next-month forecast, suggested budgets (one-click apply), personalised Nigerian-context tips |
-| 💬 **Naija AI chat** | Ask things like *"How much did I spend on Transport?"*, *"Can I afford 150k for a laptop?"*, *"What's my savings rate?"*, *"Forecast next month"* — answered from your real data |
+| 💬 **Naija AI chat** | Ask things like *"How much did I spend on Transport?"*, *"Can I afford 150k for a laptop?"*, *"What's my savings rate?"*, *"How much did I spend last month?"* — answered from your real data |
+| 📥 **Bank-alert import** | Paste GTB / Kuda / OPay / Access / Moniepoint-style debit & credit alert texts — amounts, dates, types and narrations are auto-detected, categories auto-suggested, review & import in one click |
+| 📱 **Installable (PWA)** | Add NaijaSpend to your phone's home screen; app shell cached for offline loading |
 | ₦ **Naija-first** | Naira formatting everywhere, categories like *Data & Airtime*, *Utilities (NEPA/diesel)*, demo data with Mile 12 market runs and Bolt rides |
 
 ### How the AI works
@@ -31,6 +33,9 @@ The intelligence is a **self-contained insight engine** (`server/insights.js` + 
   with your historical average, so day-3 spikes (rent!) don't produce silly forecasts.
 - **Anomaly detection** — a category is flagged when its projected spend runs ≥ 30% above your
   trailing average; single transactions ≥ 2× your category norm are surfaced too.
+- **Alert parsing** — the bank-alert importer uses layered heuristics (currency markers, 2-decimal
+  amounts, verb phrasing, balance exclusion) plus a merchant-keyword auto-categorizer, with a
+  confidence score shown per parsed row.
 - **Health score** — weighted composite of savings rate (40), budget adherence (25), spending
   consistency (15), income trend (10) and goal progress (10).
 - **Forecast** — linear regression over completed months, clamped to a sane band.
@@ -116,6 +121,7 @@ GET/POST/DELETE  /api/budgets[/:id]?month=YYYY-MM
 GET/POST/PUT/DELETE /api/goals[/:id]         POST /api/goals/:id/contribute
 GET    /api/dashboard?month=                GET  /api/insights?month=
 POST   /api/assistant { message, history }  GET  /api/export (CSV)
+POST   /api/import/parse { text }           POST /api/import/commit { items }
 ```
 
 ---

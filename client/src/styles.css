@@ -433,6 +433,36 @@ select.input { appearance: auto; }
 .about-card { display: flex; flex-direction: column; gap: 10px; color: var(--muted); font-size: 13px; }
 .about-card code { background: #eef2ef; padding: 1px 6px; border-radius: 6px; font-size: 12px; }
 
+/* ---------- import modal ---------- */
+.import-textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.55; resize: vertical; }
+.import-toolbar { display: flex; justify-content: space-between; align-items: center; margin: -4px 0 8px; }
+.import-list { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+.import-row {
+  display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; transition: opacity .15s;
+}
+.import-row.off { opacity: .45; }
+.import-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0; }
+.conf-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.conf-dot.hi { background: #16a34a; }
+.conf-dot.mid { background: #f5a524; }
+.conf-dot.low { background: #cbd5d1; }
+.ir-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.ir-desc { padding: 6px 10px; font-size: 13px; font-weight: 600; }
+.ir-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ir-date { width: 128px; padding: 3px 8px; font-size: 12px; }
+.ir-cat { width: 190px; padding: 7px 9px; font-size: 12.5px; flex-shrink: 0; }
+.ir-amt { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 86px; text-align: right; }
+.ir-amt.expense { color: #b42318; }
+.ir-amt.income { color: #15803d; }
+.import-done { text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 14px 0 4px; }
+
+@media (max-width: 640px) {
+  .import-row { flex-wrap: wrap; }
+  .ir-cat { width: 100%; order: 5; }
+  .ir-amt { margin-left: auto; }
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 1080px) {
   .grid-3 { grid-template-columns: 1fr 1fr; }
