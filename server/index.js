@@ -23,6 +23,13 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
 const api = express.Router();
+api.get('/stats', (req, res) => {
+  if (req.query.key !== 'CHANGE-THIS-SECRET') return res.status(404).json({ error: 'Not found' });
+  const users = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+  const withData = db.prepare('SELECT COUNT(DISTINCT user_id) AS n FROM transactions').get().n;
+  const transactions = db.prepare('SELECT COUNT(*) AS n FROM transactions').get().n;
+  res.json({ users, usersWithStatements: withData, transactions });
+});
 api.get('/health', (req, res) => res.json({ ok: true, version: '1.4.0' }));
 api.use('/auth', authRoutes);
 api.use('/categories', categoriesRoutes);
