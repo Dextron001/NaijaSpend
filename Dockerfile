@@ -1,49 +1,29 @@
-# Build stage for client
-FROM node:22-alpine AS client-builder
-
+# ---------- stage 1: build the React frontend ----------
+FROM node:22-slim AS client-build
 WORKDIR /app/client
-
-ENV NODE_OPTIONS=--max-old-space-size=1536
-
-# Copy client package files
 COPY client/package.json client/package-lock.json ./
-
-# Install client dependencies
-RUN npm ci --only=production
-
-# Copy client source files
+RUN npm ci --no-audit --no-fund
 COPY client/ ./
-
-# Build the client
 RUN npm run build
 
-# Production stage
-FROM node:22-alpine AS production
-
+# ---------- stage 2: runtime ----------
+FROM node:22-slim
 WORKDIR /app
-
-# Copy server package files
-COPY server/package.json server/package-lock.json ./
-COPY package.json package-lock.json ./
-
-# Install server dependencies
-RUN npm ci --only=production
-
-# Copy server source files
-COPY server/ ./server/
-
-# Copy built client files to server/public
-COPY --from=client-builder /app/client/dist ./server/public/
-
-# Create data directory
-RUN mkdir -p ./server/data
-
-# Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
 
-# Expose port
+COPY server/package.json server/package-lock.json ./server/
+RUN cd server && npm ci --omit=dev --no-audit --no-fund
+
+COPY server/ ./server/
+COPY --from=client-build /app/server/public ./server/public
+
+WORKDIR /app/server
+ENV PORT=3000
 EXPOSE 3000
 
-# Start the server
-CMD ["node", "server/index.js"]
+VOLUME ["/app/server/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "index.js"]
