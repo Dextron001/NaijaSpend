@@ -58,5 +58,6 @@ ensureDemoUser();
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, '0.0.0.0', () => {
-  console.log(`✅ NaijaSpend running on http://0.0.0.0:${port} (demo login: demo@naijaspend.ng / demo1234)`);
+  console.log(`✅ NaijaSpend running → open http://localhost:${port} in your browser`);
+  console.log(`   (demo login: demo@naijaspend.ng / demo1234)`);
 });
