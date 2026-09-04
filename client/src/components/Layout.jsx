@@ -38,7 +38,7 @@ export default function Layout({ children }) {
       <div className="shell">
         <aside className="sidebar">
           <div className="brand" onClick={() => navigate('/')} role="button">
-            <span className="brand-badge">₦</span>
+            <span className="logo-badge"><img src="/logo.png" alt="" /></span>
             <span className="brand-name">Naija<span className="brand-accent">Spend</span></span>
           </div>
           <nav className="nav">
@@ -63,7 +63,7 @@ export default function Layout({ children }) {
         <div className="main-col">
           <header className="topbar">
             <div className="topbar-brand mobile-only">
-              <span className="brand-badge small">₦</span> Naija<b>Spend</b>
+              <span className="logo-badge small"><img src="/logo.png" alt="" /></span> Naija<b>Spend</b>
             </div>
             <div className="topbar-actions">
               <button className="btn btn-primary" onClick={() => openTx()}><IconPlus size={16} /> Add Transaction</button>

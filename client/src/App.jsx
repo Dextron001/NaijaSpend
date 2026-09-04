@@ -16,7 +16,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="boot-screen">
-        <div className="brand-badge">₦</div>
+        <span className="logo-badge"><img src="/logo.png" alt="" /></span>
         <div className="spinner" />
       </div>
     );

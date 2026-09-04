@@ -2,13 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../auth.jsx';
 import { ErrorNote } from '../components/ui.jsx';
 
-const FEATURES = [
-  { icon: '🧾', title: 'Bank-alert import', sub: 'GTB, Kuda, OPay — paste & done' },
-  { icon: '🎯', title: 'Budgets & goals', sub: 'limits that actually stick' },
-  { icon: '🤖', title: 'AI insights', sub: 'patterns, forecasts, health score' },
-  { icon: '🔁', title: 'Recurring', sub: 'rent & subscriptions, auto-logged' },
-];
-
 export default function Login() {
   const { login, register, demo } = useAuth();
   const [mode, setMode] = useState('signin');
@@ -42,18 +35,10 @@ export default function Login() {
   return (
     <div className="auth">
       <aside className="auth-side">
-        <div className="auth-logo"><span className="logo-mark">₦</span>NaijaSpend</div>
+        <div className="auth-logo"><span className="logo-badge"><img src="/logo.png" alt="" /></span>NaijaSpend</div>
 
         <div className="auth-side-body">
           <h1>Every naira,<br />accounted for.</h1>
-          <ul className="auth-feats">
-            {FEATURES.map((f) => (
-              <li key={f.title}>
-                <span className="auth-feat-ic">{f.icon}</span>
-                <div><b>{f.title}</b><small>{f.sub}</small></div>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <span className="auth-watermark">₦</span>
@@ -61,7 +46,7 @@ export default function Login() {
       </aside>
 
       <main className="auth-main">
-        <div className="auth-mobile-logo"><span className="logo-mark">₦</span>NaijaSpend</div>
+        <div className="auth-mobile-logo"><span className="logo-badge"><img src="/logo.png" alt="" /></span>NaijaSpend</div>
 
         <div className="auth-card">
           <div className="auth-tabs" role="tablist">
