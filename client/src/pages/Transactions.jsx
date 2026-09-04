@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { currentMonth, fmtSmart, fmt0, fmtDateShort } from '../format.js';
 import { Loading, EmptyState, ErrorNote } from '../components/ui.jsx';
@@ -18,6 +19,15 @@ export default function Transactions() {
   const [notice, setNotice] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const { openTx } = useTxModal();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('import')) {
+      setImportOpen(true);
+      navigate('/transactions', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const load = useCallback(() => {
     const params = new URLSearchParams({ month, page: String(page), pageSize: '15' });

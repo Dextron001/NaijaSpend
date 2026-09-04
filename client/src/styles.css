@@ -490,6 +490,24 @@ select.input { appearance: auto; }
 .receipt-actions { display: flex; flex-direction: column; gap: 7px; }
 
 /* ---------- import modal ---------- */
+.import-tabs { display: flex; background: #eef2ef; padding: 4px; border-radius: 10px; gap: 4px; margin-bottom: 14px; }
+.import-tab {
+  flex: 1; border: none; background: transparent; padding: 8px 10px; border-radius: 8px;
+  font-weight: 700; font-size: 13px; color: var(--muted); transition: all .13s;
+}
+.import-tab.active { background: #fff; color: var(--text); box-shadow: var(--shadow); }
+.dropzone {
+  border: 2px dashed #c7d3cc; border-radius: 14px; padding: 30px 20px; text-align: center;
+  cursor: pointer; transition: all .15s; background: #fbfcfb; margin-bottom: 10px;
+}
+.dropzone:hover, .dropzone.drag { border-color: var(--primary); background: var(--primary-soft); }
+.dz-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.dz-sub { color: var(--muted); font-size: 12.5px; margin-top: 5px; }
+.empty-hero { display: flex; align-items: center; gap: 20px; justify-content: space-between; flex-wrap: wrap; }
+.empty-hero-text h3 { font-size: 16px; margin-bottom: 4px; }
+.empty-hero-text p { color: var(--muted); font-size: 13.5px; max-width: 520px; line-height: 1.5; }
+.empty-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
 .import-textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.55; resize: vertical; }
 .import-toolbar { display: flex; justify-content: space-between; align-items: center; margin: -4px 0 8px; }
 .import-list { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 2px; }

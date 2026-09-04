@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { currentMonth, fmt0, fmtDateShort, fmtSmart } from '../format.js';
 import { TrendChart, DonutChart } from '../components/charts.jsx';
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [ins, setIns] = useState(null);
   const [error, setError] = useState('');
   const { openTx } = useTxModal();
+  const navigate = useNavigate();
 
   const load = useCallback(() => {
     api('/dashboard?month=' + month).then(setData).catch((e) => setError(e.message));
@@ -41,6 +42,8 @@ export default function Dashboard() {
 
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!data) return <Loading label="Crunching your Naira…" />;
+
+  const emptyAccount = data.counts.transactions === 0;
 
   const idx = data.series.findIndex((s) => s.key === month);
   const cur = data.series[idx] || {};
@@ -61,6 +64,19 @@ export default function Dashboard() {
         <input className="input month-input" type="month" value={month} max={currentMonth()}
           onChange={(e) => setMonth(e.target.value)} aria-label="Choose month" />
       </div>
+
+      {emptyAccount && (
+        <div className="card empty-hero">
+          <div className="empty-hero-text">
+            <h3>Bring your money in</h3>
+            <p>Upload your bank statement (CSV) or paste debit/credit alerts — NaijaSpend categorises everything and the AI starts analysing immediately.</p>
+          </div>
+          <div className="empty-hero-actions">
+            <button className="btn btn-primary" onClick={() => navigate('/transactions?import=1')}>📥 Import statement</button>
+            <button className="btn btn-ghost" onClick={() => openTx()}>Add manually</button>
+          </div>
+        </div>
+      )}
 
       <div className="stat-grid">
         <StatCard label="Money In" value={fmt0(data.income)} delta={delta(data.income, prevMonth?.income)} tint="#16a34a" foot="income this month" />

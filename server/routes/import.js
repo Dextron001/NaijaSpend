@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { auth, wrap, isValidDate, todayISO } from '../util.js';
+import { auth, wrap, bad, isValidDate, todayISO } from '../util.js';
 
 const router = Router();
 router.use(auth);
@@ -199,6 +199,230 @@ router.post('/commit', wrap((req, res) => {
     imported++;
   }
   res.json({ imported, skipped });
+}));
+
+
+/* ---------------- bank statement FILE parsing (CSV) ---------------- */
+
+/** RFC4180-ish CSV parser: handles quoted fields with commas/newlines. */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += c;
+    } else if (c === '"') {
+      inQ = true;
+    } else if (c === ',') {
+      row.push(field); field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some((f) => String(f).trim() !== '')) rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.some((f) => String(f).trim() !== '')) rows.push(row);
+  return rows;
+}
+
+/** Parse the many date formats banks use. Returns ISO string or null. */
+function parseDateValue(raw) {
+  const s = String(raw || '').trim();
+  if (!s || s.length > 32) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return iso(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (m) {
+    let a = +m[1], b = +m[2], y = +m[3];
+    if (y < 100) y += 2000;
+    let d, mo;
+    if (a > 12) { d = a; mo = b; }        // definitely day-first
+    else if (b > 12) { d = b; mo = a; }   // definitely month-first
+    else { d = a; mo = b; }               // Nigerian banks default: day-first
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return iso(y, mo, d);
+    return null;
+  }
+  m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?[\s\-]([a-z]{3,9})[\s\-,]*(\d{2,4})$/i); // 01 Sep 2026
+  if (m) {
+    const mo = MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()) + 1;
+    let y = +m[3]; if (y < 100) y += 2000;
+    if (mo && +m[1] >= 1 && +m[1] <= 31) return iso(y, mo, +m[1]);
+  }
+  m = s.match(/^([a-z]{3,9})\s+(\d{1,2}),?\s*(\d{2,4})$/i); // Sep 1, 2026
+  if (m) {
+    const mo = MONTHS.indexOf(m[1].slice(0, 3).toLowerCase()) + 1;
+    let y = +m[3]; if (y < 100) y += 2000;
+    if (mo) return iso(y, mo, +m[2]);
+  }
+  return null;
+}
+
+/** Parse money values: "₦5,000.00", "NGN 2,500 DR", "(1,200.00)", "-450", "+9000". */
+function parseMoney(raw) {
+  let s = String(raw ?? '').trim().toLowerCase();
+  if (!s || s === 'n/a' || s === '-' || s === 'nil') return null;
+  let neg = false;
+  if (s.includes('(') && s.includes(')')) neg = true;
+  if (/^-/.test(s)) neg = true;
+  const drcr = s.match(/\b(dr|cr)\b/);
+  if (drcr && drcr[1] === 'dr') neg = true;
+  s = s.replace(/[^0-9.]/g, '');
+  if (!s || s === '.') return null;
+  const n = parseFloat(s);
+  if (!Number.isFinite(n) || n <= 0 || n > 1e12) return null;
+  return { n: Math.round(n * 100) / 100, neg };
+}
+
+router.post('/file', wrap((req, res) => {
+  const filename = String(req.body?.filename || 'statement');
+  const content = String(req.body?.content || '');
+  if (!content.trim()) return bad(res, 'That file looks empty.');
+  if (content.length > 3_000_000) return bad(res, 'File too large — keep statements under 3 MB (export a shorter date range).');
+
+  const cats = db.prepare('SELECT * FROM categories WHERE user_id = ?').all(req.user.id);
+  const byNorm = new Map(cats.map((c) => [norm(c.name), c]));
+  const fallbackCatId = (type) => (byNorm.get(type === 'income' ? 'otherincome' : 'others')?.id || cats.find((c) => c.type === type)?.id);
+  const today = todayISO();
+  const dupCheck = db.prepare('SELECT 1 FROM transactions WHERE user_id = ? AND date = ? AND amount = ? AND type = ? LIMIT 1');
+
+  const rows = parseCSV(content);
+  if (!rows.length) return bad(res, 'Could not read any rows from that file.');
+  if (rows.length > 501) { rows.length = 501; }
+
+  // ---- column mapping: (a) by header names, else (b) by sniffing values ----
+  const looksTexty = (row) => row.filter((c) => String(c).trim() !== '' && !parseDateValue(c) && parseMoney(c) === null).length >= Math.max(2, Math.ceil(row.length * 0.5));
+  let map = null;
+  let headerOffset = 0;
+
+  if (rows.length > 1 && looksTexty(rows[0])) {
+    const headers = rows[0].map((h) => String(h).trim());
+    const find = (re) => headers.findIndex((h, i) => h && re.test(h));
+    const used = new Set();
+    const take = (re) => { const i = find(re); if (i >= 0) { used.add(i); return i; } return -1; };
+    const iDate = take(/\bdate\b|posted|value\s*d/i);
+    const iType = take(/^(type|dr\s*\/\s*cr|d\/c|indicator|direction)$/i);
+    const iBal = take(/balanc|^bal\b/i);
+    let iDebit = -1, iCredit = -1, iAmt = -1;
+    if (iBal >= 0) used.add(iBal);
+    iDebit = take(/debit|withdraw|paid\s*out|^dr$/i);
+    iCredit = take(/credit|deposit|paid\s*in|^cr$/i);
+    if (iDebit < 0 && iCredit < 0) iAmt = take(/^amount$|amount|amt\b|^value$|^naira$|^total$/i);
+    const iDesc = headers.findIndex((h, i) => !used.has(i) && /narration|descri|detail|remark|memo|particular|payee|info/i.test(h));
+    if (iDesc >= 0) used.add(iDesc);
+    if (iDate >= 0 && (iAmt >= 0 || iDebit >= 0 || iCredit >= 0)) {
+      map = { iDate, iAmt, iDebit, iCredit, iType, iDesc, headers };
+      headerOffset = 1;
+    }
+  }
+
+  if (!map) {
+    // positional sniffing across all rows: most date-like col = date, most
+    // money-like col = amount (earliest on tie, so "amount" beats "balance"),
+    // longest average text col = description
+    const sample = rows.slice(0, 200);
+    const width = Math.max(...sample.map((r) => r.length));
+    let best = { date: -1, dateN: 0, amt: -1, amtN: 0, desc: -1, descLen: 0 };
+    for (let c = 0; c < width; c++) {
+      let dateN = 0, amtN = 0, textLen = 0, textN = 0;
+      for (const r of sample) {
+        const v = String(r[c] ?? '').trim();
+        if (!v) continue;
+        if (parseDateValue(v)) dateN++;
+        if (parseMoney(v)) amtN++;
+        textLen += v.length; textN++;
+      }
+      const avg = textN ? textLen / textN : 0;
+      if (dateN > best.dateN && dateN >= sample.length * 0.5) best = { ...best, date: c, dateN };
+      if (c !== best.date && amtN > best.amtN && amtN >= sample.length * 0.5) best = { ...best, amt: c, amtN };
+      if (c !== best.date && c !== best.amt && avg > best.descLen && textN >= sample.length * 0.5) best = { ...best, desc: c, descLen: avg };
+    }
+    if (best.date >= 0 && best.amt >= 0) {
+      map = { iDate: best.date, iAmt: best.amt, iDebit: -1, iCredit: -1, iType: -1, iDesc: best.desc, headers: [] };
+    }
+  }
+
+  const items = [];
+  if (map) {
+    for (const row of rows.slice(headerOffset)) {
+      const cell = (i) => (i >= 0 && i < row.length ? String(row[i] ?? '').trim() : '');
+      const date = parseDateValue(cell(map.iDate));
+      if (!date) continue;
+      const raw = row.join(' | ');
+      let type = null, money = null;
+      if (map.iType >= 0) {
+        const t = cell(map.iType).toLowerCase();
+        if (/\bdr\b|debit/.test(t)) type = 'expense';
+        else if (/\bcr\b|credit/.test(t)) type = 'income';
+      }
+      if (map.iDebit >= 0 || map.iCredit >= 0) {
+        const d = parseMoney(cell(map.iDebit));
+        const c = parseMoney(cell(map.iCredit));
+        if (d) { type = 'expense'; money = d; }
+        else if (c) { type = 'income'; money = c; }
+      } else if (map.iAmt >= 0) {
+        const a = parseMoney(cell(map.iAmt));
+        if (a) { money = a; if (!type) type = a.neg ? 'expense' : 'income'; }
+      }
+      if (!type) type = /\bcr\b|credit|salary|refund/i.test(cell(map.iDesc)) ? 'income' : 'expense';
+      if (!money) continue;
+      const descSrc = cell(map.iDesc) || raw;
+      const desc = cleanDesc(descSrc).slice(0, 120) || 'Statement entry';
+      const catName = guessCategoryName(`${desc} ${raw}`, type);
+      const cat = byNorm.get(norm(catName));
+      items.push({
+        type, amount: money.n, date, description: desc, method: guessMethod(raw),
+        category_id: (cat || fallbackCatId(type))?.id,
+        category_name: cat?.name || catName,
+        confidence: 0.85,
+        dup: !!dupCheck.get(req.user.id, date, money.n, type),
+        raw: descSrc.slice(0, 160),
+      });
+      if (items.length >= 500) break;
+    }
+  }
+
+  // fallback: not tabular at all → try it as one bank alert per line (.txt exports, SMS dumps)
+  if (!items.length) {
+    for (const line of content.split(/\r?\n+/).map((l) => l.trim()).filter(Boolean).slice(0, 300)) {
+      const amounts = parseAmounts(normalizeText(line));
+      const amt = amounts.find((a) => !a.isBal);
+      if (!amt) continue;
+      const isCredit = CREDIT_RE.test(line);
+      const isDebit = DEBIT_RE.test(line);
+      const type = isCredit && !isDebit ? 'income' : 'expense';
+      const { date } = findDate(line, today);
+      const desc = extractDesc(line);
+      const catName = guessCategoryName(line, type);
+      const cat = byNorm.get(norm(catName));
+      items.push({
+        type, amount: amt.n, date, description: desc.text, method: guessMethod(line),
+        category_id: (cat || fallbackCatId(type))?.id,
+        category_name: cat?.name || catName,
+        confidence: 0.7,
+        dup: !!dupCheck.get(req.user.id, date, amt.n, type),
+        raw: line.slice(0, 160),
+      });
+    }
+  }
+
+  if (!items.length) {
+    return bad(res, 'No transactions could be read from that file. Export a CSV from your bank app (it should have Date, Description/Narration and Amount columns) and try again.');
+  }
+
+  const mapped = map && map.headers.length
+    ? Object.entries({ date: map.iDate, description: map.iDesc, amount: map.iAmt, debit: map.iDebit, credit: map.iCredit, 'dr/cr': map.iType })
+        .filter(([, i]) => i >= 0)
+        .map(([k, i]) => `${k} → "${map.headers[i]}"`)
+        .join(' · ')
+    : null;
+
+  res.json({ items, scanned: rows.length - headerOffset, mapped });
 }));
 
 export default router;
