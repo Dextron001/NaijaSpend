@@ -1,0 +1,25 @@
+{
+  "name": "NaijaSpend — Smart money tracking",
+  "short_name": "NaijaSpend",
+  "description": "Track your Naira, budget smart, and get AI-powered insights into your spending.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1f14",
+  "theme_color": "#0a7d43",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
