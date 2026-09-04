@@ -93,7 +93,7 @@ export default function Transactions() {
           <p className="page-sub">Every Naira, accounted for</p>
         </div>
         <div className="head-actions">
-          <button className="btn btn-ghost" onClick={() => setImportOpen(true)}>📥 Import alerts</button>
+          <button className="btn btn-import" onClick={() => setImportOpen(true)}>📥 Import statement</button>
           <button className="btn btn-ghost" onClick={exportCsv}><IconDownload size={15} /> Export CSV</button>
           <button className="btn btn-primary" onClick={() => openTx()}><IconPlus size={16} /> Add</button>
         </div>

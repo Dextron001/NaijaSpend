@@ -66,7 +66,8 @@ export default function Layout({ children }) {
               <span className="logo-badge small"><img src="/logo.png" alt="" /></span> Naija<b>Spend</b>
             </div>
             <div className="topbar-actions">
-              <button className="btn btn-primary" onClick={() => openTx()}><IconPlus size={16} /> Add Transaction</button>
+              <button className="btn btn-import" onClick={() => navigate('/transactions?import=1')}>📥 Import statement</button>
+              <button className="btn btn-primary" onClick={() => openTx()}><IconPlus size={16} /> Add</button>
               <button className="icon-btn" onClick={() => navigate('/settings')} title="Settings"><IconSettings size={17} /></button>
               <button className="icon-btn hide-mobile" onClick={logout} title="Log out"><IconLogout size={17} /></button>
             </div>

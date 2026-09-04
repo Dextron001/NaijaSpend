@@ -43,7 +43,7 @@ export default function Dashboard() {
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!data) return <Loading label="Crunching your Naira…" />;
 
-  const emptyAccount = data.counts.transactions === 0;
+  const emptyAccount = data.counts.transactions < 3;
 
   const idx = data.series.findIndex((s) => s.key === month);
   const cur = data.series[idx] || {};
@@ -61,6 +61,7 @@ export default function Dashboard() {
           <h2>Dashboard</h2>
           <p className="page-sub">{data.label}{idx === data.series.length - 1 ? ' · month in progress' : ''}</p>
         </div>
+        <button className="btn btn-import" onClick={() => navigate('/transactions?import=1')}>📥 Import statement</button>
         <input className="input month-input" type="month" value={month} max={currentMonth()}
           onChange={(e) => setMonth(e.target.value)} aria-label="Choose month" />
       </div>
