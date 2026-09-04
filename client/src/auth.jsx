@@ -23,12 +23,11 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => applyAuth(await api('/auth/login', { method: 'POST', body: { email, password } }));
   const register = async (name, email, password) => applyAuth(await api('/auth/register', { method: 'POST', body: { name, email, password } }));
-  const demo = async () => applyAuth(await api('/auth/demo', { method: 'POST' }));
   const logout = () => { localStorage.removeItem('ns_token'); setUser(null); };
   const refreshUser = async () => { const d = await api('/auth/me'); setUser(d.user); };
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, demo, logout, refreshUser, setUser }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, logout, refreshUser, setUser }}>
       {children}
     </AuthCtx.Provider>
   );

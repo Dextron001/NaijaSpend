@@ -16,7 +16,6 @@ import importRoutes from './routes/import.js';
 import recurrencesRoutes from './routes/recurrences.js';
 import reportsRoutes from './routes/reports.js';
 import receiptsRoutes from './routes/receipts.js';
-import { ensureDemoUser } from './seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -54,10 +53,15 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Something went wrong on our side.' });
 });
 
-ensureDemoUser();
+
+// real data only: remove any legacy auto-generated demo accounts (@naijaspend.ng placeholder domain)
+try {
+  const { db } = await import('./db.js');
+  const gone = db.prepare("DELETE FROM users WHERE email LIKE '%@naijaspend.ng'").run();
+  if (gone.changes > 0) console.log(`🧹 Removed ${gone.changes} legacy demo account(s)`);
+} catch { /* best effort */ }
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, '0.0.0.0', () => {
   console.log(`✅ NaijaSpend running → open http://localhost:${port} in your browser`);
-  console.log(`   (demo login: demo@naijaspend.ng / demo1234)`);
 });

@@ -13,7 +13,7 @@ your *actual* numbers.
 
 | Area | What you get |
 |---|---|
-| 🔐 **Auth** | Email/password sign-up & login (scrypt hashing + JWT), one-click seeded demo account |
+| 🔐 **Auth** | Email/password sign-up & login (scrypt hashing + JWT) |
 | 🧾 **Transactions** | Full CRUD, categories with emoji + colour, payment methods (Transfer/Card/Cash/USSD/POS), search, filters, pagination, CSV export |
 | 🎯 **Budgets** | Monthly limits per category with live progress bars, over-budget warnings, carry-over helper |
 | 🏁 **Goals** | Savings goals with targets, deadlines, progress tracking and quick contributions |
@@ -25,7 +25,7 @@ your *actual* numbers.
 | 📊 **Reports** | 12-month income vs spending chart, month-by-month table with savings rates, category × month breakdown, averages and best-month stats |
 | 🧾 **Receipt photos** | Attach a photo to any transaction — compressed in the browser, stored server-side, viewable with one tap |
 | 📱 **Installable (PWA)** | Add NaijaSpend to your phone's home screen; app shell cached for offline loading |
-| ₦ **Naija-first** | Naira formatting everywhere, categories like *Data & Airtime*, *Utilities (NEPA/diesel)*, demo data with Mile 12 market runs and Bolt rides |
+| ₦ **Naija-first** | Naira formatting everywhere, categories that match real life — *Data & Airtime*, *Utilities (NEPA/diesel)*, market runs and Bolt rides |
 
 ### How the AI works
 
@@ -65,10 +65,9 @@ npm start         # start the app on http://localhost:3000
 
 Then open **http://localhost:3000**.
 
-**Try it instantly:** click *"⚡ Try the instant demo"* on the login page — you get a fresh
-account seeded with 6 months of realistic Nigerian transactions, budgets and goals.
-
-Pre-made demo login: `demo@naijaspend.ng` / `demo1234`
+**First run:** open http://localhost:3000 and create your account — then bring your real data in
+via **Transactions → 📥 Import alerts** (paste your bank's debit/credit alert texts) or add
+transactions manually.
 
 ### Development mode
 
@@ -119,7 +118,7 @@ npm run dev:client        # Vite dev server on :5173 (proxies /api → :3000)
 All routes are under `/api` and (except auth) require `Authorization: Bearer <token>`.
 
 ```
-POST   /api/auth/register|login|demo        POST /api/auth/demo-data     DELETE /api/auth/data
+POST   /api/auth/register|login             PUT  /api/auth/me|password    DELETE /api/auth/data
 GET    /api/auth/me                         PUT  /api/auth/me|password
 GET/POST/DELETE  /api/categories[/:id]
 GET/POST/PUT/DELETE /api/transactions[/:id]  (filters: month, type, category_id, q, page)

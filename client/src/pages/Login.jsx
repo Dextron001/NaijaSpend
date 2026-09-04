@@ -3,7 +3,7 @@ import { useAuth } from '../auth.jsx';
 import { ErrorNote } from '../components/ui.jsx';
 
 export default function Login() {
-  const { login, register, demo } = useAuth();
+  const { login, register } = useAuth();
   const [mode, setMode] = useState('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,12 +26,6 @@ export default function Login() {
     }
   };
 
-  const continueDemo = async () => {
-    setError('');
-    setBusy(true);
-    try { await demo(); } catch (err) { setError(err.message); } finally { setBusy(false); }
-  };
-
   return (
     <div className="auth">
       <aside className="auth-side">
@@ -42,7 +36,6 @@ export default function Login() {
         </div>
 
         <span className="auth-watermark">₦</span>
-        <footer className="auth-side-foot">Node · React · SQLite&nbsp;&nbsp;—&nbsp;&nbsp;v1.3.0</footer>
       </aside>
 
       <main className="auth-main">
@@ -92,10 +85,6 @@ export default function Login() {
               {busy ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
-
-          <p className="auth-demo-line">
-            Just looking? <button type="button" className="link-btn" onClick={continueDemo} disabled={busy}>Open the demo account</button>
-          </p>
         </div>
 
         <footer className="auth-main-foot">© 2026 NaijaSpend</footer>

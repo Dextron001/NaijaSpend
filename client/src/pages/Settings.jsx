@@ -15,7 +15,7 @@ export default function Settings() {
   const [catMsg, setCatMsg] = useState('');
   const [catErr, setCatErr] = useState('');
   const [newCat, setNewCat] = useState({ type: 'expense', name: '', icon: '🏷️', color: '#0a7d43' });
-  const [confirm, setConfirm] = useState(null); // 'wipe' | 'demo'
+  const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const loadCats = () => api('/categories').then((d) => setCategories(d.categories)).catch(() => { });
@@ -77,11 +77,6 @@ export default function Settings() {
     try {
       if (confirm === 'wipe') {
         await api('/auth/data', { method: 'DELETE' });
-        txChanged();
-        setConfirm(null);
-        window.location.reload();
-      } else if (confirm === 'demo') {
-        await api('/auth/demo-data', { method: 'POST' });
         txChanged();
         setConfirm(null);
         window.location.reload();
@@ -185,26 +180,23 @@ export default function Settings() {
         <div className="card-head"><h3>🗄️ Your data</h3></div>
         <div className="data-actions">
           <button className="btn btn-ghost" onClick={exportCsv}>⬇️ Export transactions (CSV)</button>
-          <button className="btn btn-soft" onClick={() => setConfirm('demo')}>⚡ Load demo data</button>
           <button className="btn btn-danger-ghost" onClick={() => setConfirm('wipe')}>🗑️ Delete all my data</button>
         </div>
-        <p className="hp-note">Demo data replaces your transactions, budgets and goals with 6 months of realistic Nigerian spending — great for exploring the AI features.</p>
+        <p className="hp-note">Your ledger lives only on the server running NaijaSpend. Export a CSV any time from here or the Transactions page.</p>
       </div>
 
       <div className="card about-card">
-        <b>NaijaSpend</b> · personal finance tracker with AI insights · built with React, Node.js, Express & SQLite.
+        <b>NaijaSpend</b> · personal finance tracker with AI insights · your data stays on the server you run it on.
         Optional: set an <code>OPENAI_API_KEY</code> environment variable on the server to upgrade the assistant chat from the built-in rules engine to an LLM.
         <button className="btn btn-ghost btn-sm self-end" onClick={logout}>Log out</button>
       </div>
 
-      <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm === 'wipe' ? 'Delete all data?' : 'Load demo data?'}>
-        <p>{confirm === 'wipe'
-          ? 'This permanently deletes all your transactions, budgets and goals. This cannot be undone.'
-          : 'This replaces your current transactions, budgets and goals with fresh demo data. Continue?'}</p>
+      <Modal open={!!confirm} onClose={() => setConfirm(null)} title="Delete all data?">
+        <p>This permanently deletes all your transactions, budgets and goals. This cannot be undone.</p>
         <div className="form-actions">
           <button className="btn btn-ghost" onClick={() => setConfirm(null)}>Cancel</button>
-          <button className={`btn ${confirm === 'wipe' ? 'btn-danger' : 'btn-primary'}`} onClick={runConfirm} disabled={busy}>
-            {busy ? 'Working…' : confirm === 'wipe' ? 'Yes, delete everything' : 'Load demo data'}
+          <button className="btn btn-danger" onClick={runConfirm} disabled={busy}>
+            {busy ? 'Working…' : 'Yes, delete everything'}
           </button>
         </div>
       </Modal>

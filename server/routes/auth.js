@@ -1,8 +1,6 @@
 import { Router } from 'express';
-import crypto from 'node:crypto';
 import { db, ensureDefaultCategories, wipeUserData } from '../db.js';
 import { signToken, hashPassword, verifyPassword, auth, wrap, bad } from '../util.js';
-import { seedDemoData } from '../seed.js';
 
 const router = Router();
 const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, currency: u.currency, created_at: u.created_at });
@@ -28,17 +26,6 @@ router.post('/login', wrap((req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (!user || !verifyPassword(password, user.password_hash)) return bad(res, 'Invalid email or password.', 401);
   res.json({ token: signToken({ sub: user.id }), user: publicUser(user) });
-}));
-
-// One-click demo account with rich seeded data
-router.post('/demo', wrap((req, res) => {
-  const suffix = crypto.randomBytes(4).toString('hex');
-  const email = `demo.${suffix}@naijaspend.ng`;
-  const r = db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('Demo User', email, hashPassword('demo1234'));
-  const userId = Number(r.lastInsertRowid);
-  seedDemoData(userId);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  res.json({ token: signToken({ sub: userId }), user: publicUser(user) });
 }));
 
 router.get('/me', auth, wrap((req, res) => res.json({ user: req.user })));
@@ -67,10 +54,5 @@ router.delete('/data', auth, wrap((req, res) => {
   res.json({ ok: true });
 }));
 
-// load demo data into my account
-router.post('/demo-data', auth, wrap((req, res) => {
-  seedDemoData(req.user.id);
-  res.json({ ok: true });
-}));
 
 export default router;
