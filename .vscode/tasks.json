@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "01 · Install dependencies (server + client)",
+      "type": "npm",
+      "script": "setup",
+      "problemMatcher": []
+    },
+    {
+      "label": "02 · Build frontend",
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "dev · server (API on :3000)",
+      "type": "npm",
+      "script": "dev:server",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "dev · client (Vite hot reload on :5173)",
+      "type": "npm",
+      "script": "dev:client",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
