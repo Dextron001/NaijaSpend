@@ -313,7 +313,7 @@ export function buildInsights(db_, userId, monthRaw) {
   // ---- narrative summary ----
   let summary;
   if (!monthTx.length) {
-    summary = `No transactions recorded for ${monthLabel(month)} yet. Add your income and expenses (or load the demo data from Settings) and the AI will start spotting patterns immediately.`;
+    summary = `No transactions recorded for ${monthLabel(month)} yet. Upload a bank statement (Transactions → Import statement) or add transactions manually, and the AI will start spotting patterns immediately.`;
   } else {
     const dir = prev && prev.expense > 0 ? (projExpense > prev.expense ? 'higher' : 'lower') : null;
     const pctVsPrev = prev && prev.expense > 0 ? Math.abs(Math.round((projExpense / prev.expense - 1) * 100)) : null;
