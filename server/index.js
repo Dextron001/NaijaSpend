@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
+import { db } from './db.js';
 import authRoutes from './routes/auth.js';
 import categoriesRoutes from './routes/categories.js';
 import transactionsRoutes from './routes/transactions.js';
