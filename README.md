@@ -20,7 +20,7 @@ your *actual* numbers.
 | 📊 **Dashboard** | Income/spending/net/savings-rate stat cards, 6-month income-vs-spend chart, category donut, budget snapshot, recent activity |
 | 🤖 **AI Insights** | Financial health score (0–100 with breakdown), spending anomaly detection, unusually-large-transaction flags, month-over-month movers, next-month forecast, suggested budgets (one-click apply), personalised Nigerian-context tips |
 | 💬 **Naija AI chat** | Ask things like *"How much did I spend on Transport?"*, *"Can I afford 150k for a laptop?"*, *"What's my savings rate?"*, *"How much did I spend last month?"* — answered from your real data |
-| 📥 **Bank-alert import** | Paste GTB / Kuda / OPay / Access / Moniepoint-style debit & credit alert texts — amounts, dates, types and narrations are auto-detected, categories auto-suggested, review & import in one click |
+| 📥 **Statement import** | The core flow: upload a bank statement file — **CSV, Excel (.xlsx/.xls) or PDF** — or paste debit/credit alert texts (GTB, Kuda, OPay, Access, Moniepoint…). Columns and dates are auto-detected, categories auto-suggested, duplicates flagged and skipped, review before anything imports |
 | 🔁 **Recurring transactions** | Rules for rent, salary, subscriptions, tithe — auto-logged on schedule (monthly/weekly), with automatic catch-up for missed periods, pause/resume, and "log now" |
 | 📊 **Reports** | 12-month income vs spending chart, month-by-month table with savings rates, category × month breakdown, averages and best-month stats |
 | 🧾 **Receipt photos** | Attach a photo to any transaction — compressed in the browser, stored server-side, viewable with one tap |
@@ -126,7 +126,8 @@ GET/POST/DELETE  /api/budgets[/:id]?month=YYYY-MM
 GET/POST/PUT/DELETE /api/goals[/:id]         POST /api/goals/:id/contribute
 GET    /api/dashboard?month=                GET  /api/insights?month=
 POST   /api/assistant { message, history }  GET  /api/export (CSV)
-POST   /api/import/parse { text }           POST /api/import/commit { items }
+POST   /api/import/parse { text }           POST /api/import/file { filename, content }
+POST   /api/import/pdf { filename, contentBase64 }   POST /api/import/commit { items }
 GET/POST/PUT/DELETE /api/recurrences[/:id]   POST /api/recurrences/:id/toggle|run-now
 GET    /api/reports?months=12               PUT/DELETE /api/transactions/:id/receipt
 GET    /api/receipts/:txId[?token=]

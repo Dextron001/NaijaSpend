@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { auth, wrap, bad, isValidDate, todayISO } from '../util.js';
 
+import { PDFParse } from 'pdf-parse';
+
 const router = Router();
 router.use(auth);
 
@@ -423,6 +425,157 @@ router.post('/file', wrap((req, res) => {
     : null;
 
   res.json({ items, scanned: rows.length - headerOffset, mapped });
+}));
+
+
+/* ---------------- bank statement PDF parsing ---------------- */
+
+/** Find a date anywhere in a PDF line. Returns { date, end } or null. */
+function findDateInLine(line) {
+  const pats = [
+    /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/,            // 01/09/2026 · 1-9-26
+    /(\d{4})-(\d{1,2})-(\d{1,2})/,                              // 2026-09-01
+    /(\d{1,2})(?:st|nd|rd|th)?[\s\-]+([a-z]{3,9})\.?[\s\-,]*(\d{2,4})/i, // 01 Sep 2026 · 05-Sep-2026
+    /([a-z]{3,9})\.?[\s]+(\d{1,2}),?[\s]+(\d{2,4})/i,              // Sep 1 2026
+  ];
+  for (const re of pats) {
+    const m = line.match(re);
+    if (!m) continue;
+    let d, mo, y;
+    if (m.length === 4 && /^\d{4}$/.test(m[1])) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if (m.length === 4 && /^\d{1,2}$/.test(m[1])) {
+      d = +m[1];
+      mo = Number.isNaN(+m[2]) ? MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()) + 1 : +m[2];
+      y = +m[3];
+    } else if (m.length === 4) { mo = MONTHS.indexOf(m[1].slice(0, 3).toLowerCase()) + 1; d = +m[2]; y = +m[3]; }
+    else continue;
+    if (y < 100) y += 2000;
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 2000 && y <= 2100 && !Number.isNaN(d)) {
+      return { date: iso(y, mo, d), end: m.index + m[0].length };
+    }
+  }
+  return null;
+}
+
+router.post('/pdf', wrap(async (req, res) => {
+  const b64 = String(req.body?.contentBase64 || '');
+  if (!b64) return bad(res, 'No PDF content received.');
+  const buf = Buffer.from(b64, 'base64');
+  if (!buf.length) return bad(res, 'That PDF looks empty.');
+  if (buf.length > 4 * 1024 * 1024) return bad(res, 'PDF too large — keep statements under 4 MB.');
+
+  let text = '';
+  try {
+    const parser = new PDFParse({ data: new Uint8Array(buf) });
+    try {
+      const result = await parser.getText();
+      text = result.text || '';
+    } finally {
+      await parser.destroy().catch(() => { });
+    }
+  } catch (e) {
+    return bad(res, 'Could not read that PDF — if it is password-protected, export an unlocked copy and try again.');
+  }
+  if (!text.trim()) {
+    return bad(res, 'No readable text in that PDF (it may be a scanned image). Use the CSV export from your bank app instead.');
+  }
+
+  const cats = db.prepare('SELECT * FROM categories WHERE user_id = ?').all(req.user.id);
+  const byNorm = new Map(cats.map((c) => [norm(c.name), c]));
+  const fallbackCatId = (type) => (byNorm.get(type === 'income' ? 'otherincome' : 'others')?.id || cats.find((c) => c.type === type)?.id);
+  const dupCheck = db.prepare('SELECT 1 FROM transactions WHERE user_id = ? AND date = ? AND amount = ? AND type = ? LIMIT 1');
+
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\s{2,}/g, ' ').trim()).filter(Boolean).slice(0, 1200);
+
+  // money token: requires comma groups or decimals (avoids ref numbers), optional DR/CR
+  const MONEY_RE = /(?:₦|NGN)?\s?-?\(?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?\)?(?:\s?(?:DR|CR))?|[₦]?\d+\.\d{2}\b/gi;
+
+  const m0Index = (str) => {
+    MONEY_RE.lastIndex = 0;
+    const mm = MONEY_RE.exec(str);
+    return mm ? mm.index : str.length;
+  };
+
+  const candidates = [];
+  let pending = null; // date awaiting its amount line (pdf column splits)
+  for (const line of lines) {
+    const d = findDateInLine(line);
+    const rest = d ? line.slice(d.end) : line;
+    const amounts = [];
+    let m;
+    MONEY_RE.lastIndex = 0;
+    while ((m = MONEY_RE.exec(rest))) {
+      let tok = m[0].trim();
+      const dr = /\bDR\b/i.test(tok);
+      const cr = /\bCR\b/i.test(tok);
+      const val = parseMoney(tok);
+      if (val && Number.isFinite(val.n)) amounts.push({ ...val, dr, cr });
+    }
+    if (d && amounts.length) {
+      const firstIdx = amounts.length ? m0Index(rest) : rest.length;
+      const narration = rest.slice(0, firstIdx) || rest;
+      candidates.push({ date: d.date, amounts, narration, raw: line.slice(0, 160) });
+      pending = null;
+    } else if (d && !amounts.length) {
+      pending = { date: d.date, narr: rest }; // narration row may be followed by amounts row
+    } else if (!d && amounts.length && pending) {
+      const firstIdx = m0Index(rest);
+      const narration = (pending.narr + ' ' + rest.slice(0, firstIdx)).trim();
+      candidates.push({ date: pending.date, amounts, narration, raw: (pending.narr + ' ' + line).slice(0, 160) });
+      pending = null;
+    }
+  }
+
+  // classify with explicit DR/CR keywords, then running-balance reconciliation
+  let lastBal = null;
+  const items = [];
+  for (const c of candidates.slice(0, 500)) {
+    const raw = c.raw;
+    let type = null, amount = null;
+    const drHit = /\bdr\b|\bdebit\b/i.test(raw);
+    const crHit = /\bcr\b|\bcredit\b|\bbalance brought (forward|fwd)\b/i.test(raw);
+
+    const first = c.amounts[0];
+    const last = c.amounts[c.amounts.length - 1];
+    if (first?.dr && !crHit) { type = 'expense'; amount = first.n; }
+    else if (first?.cr && !drHit) { type = 'income'; amount = first.n; }
+    else if (drHit && !crHit) { type = 'expense'; amount = first.n; }
+    else if (crHit && !drHit) { type = 'income'; amount = first.n; }
+    else if (c.amounts.length >= 2 && lastBal !== null) {
+      const amt = first.n;
+      const bal = last.n;
+      const asDebit = Math.abs(lastBal - amt - bal);
+      const asCredit = Math.abs(lastBal + amt - bal);
+      if (asCredit < asDebit - 0.01) { type = 'income'; amount = amt; }
+      else { type = 'expense'; amount = amt; }
+      lastBal = bal;
+    } else if (c.amounts.length >= 2) {
+      type = /salary|refund|dividend|interest/i.test(raw) ? 'income' : 'expense';
+      amount = first.n;
+      lastBal = last.n;
+    } else {
+      type = /salary|refund|dividend|interest/i.test(raw) ? 'income' : 'expense';
+      amount = first.n;
+    }
+    if (!type || !amount) continue;
+
+    const desc = (cleanDesc(c.narration || '') || cleanDesc(raw) || 'Statement entry').slice(0, 120);
+    const catName = guessCategoryName(raw, type);
+    const cat = byNorm.get(norm(catName));
+    items.push({
+      type, amount, date: c.date, description: desc, method: guessMethod(raw),
+      category_id: (cat || fallbackCatId(type))?.id,
+      category_name: cat?.name || catName,
+      confidence: 0.7,
+      dup: !!dupCheck.get(req.user.id, c.date, amount, type),
+      raw: raw.slice(0, 160),
+    });
+  }
+
+  if (!items.length) {
+    return bad(res, 'No transactions found in the PDF text. If your bank exports CSV, that format imports most reliably.');
+  }
+  res.json({ items, scanned: lines.length, mapped: 'PDF text extraction' });
 }));
 
 export default router;

@@ -48,9 +48,67 @@ export default function ImportModal({ open, onClose, categories }) {
     finally { setBusyLabel(''); }
   };
 
+  const bufToBase64 = (buf) => {
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(bin);
+  };
+
   const onFileChosen = (file) => {
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) return setError('File too large (max 3 MB). Export a shorter date range from your bank app.');
+    setError('');
+    const name = file.name.toLowerCase();
+
+    if (file.size > 4 * 1024 * 1024) return setError('File too large (max 4 MB). Export a shorter date range from your bank app.');
+
+    // ---- PDF → base64 → server-side extraction ----
+    if (name.endsWith('.pdf')) {
+      const reader = new FileReader();
+      reader.onerror = () => setError('Could not read that file.');
+      reader.onload = async () => {
+        setError(''); setResult(null); setMeta(null);
+        setBusyLabel('Reading PDF…');
+        try {
+          const d = await api('/import/pdf', { method: 'POST', body: { filename: file.name, contentBase64: bufToBase64(reader.result) } });
+          applyParsed(d);
+        } catch (e) { setError(e.message); }
+        finally { setBusyLabel(''); }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // ---- Excel → SheetJS (lazy-loaded) → CSV → existing parser ----
+    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+      const reader = new FileReader();
+      reader.onerror = () => setError('Could not read that file.');
+      reader.onload = async () => {
+        setBusyLabel('Reading Excel…');
+        try {
+          const XLSX = await import('xlsx');
+          const wb = XLSX.read(reader.result, { type: 'array' });
+          let sheetName = wb.SheetNames[0];
+          let maxRows = -1;
+          for (const sn of wb.SheetNames) {
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1 }).length;
+            if (rows > maxRows) { maxRows = rows; sheetName = sn; }
+          }
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+          if (!csv.trim()) { setBusyLabel(''); return setError('That Excel file has no data rows.'); }
+          await parseFileContent(file.name.replace(/\.(xlsx|xls)$/i, '.csv'), csv);
+        } catch (e) {
+          setBusyLabel('');
+          setError('Could not read that Excel file: ' + (e?.message || 'unknown error'));
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // ---- CSV / TXT ----
     const reader = new FileReader();
     reader.onerror = () => setError('Could not read that file.');
     reader.onload = () => parseFileContent(file.name, String(reader.result || ''));
@@ -113,18 +171,18 @@ export default function ImportModal({ open, onClose, categories }) {
                 onClick={() => fileInput.current?.click()}
                 role="button" tabIndex={0}
               >
-                <input ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" hidden
+                <input ref={fileInput} type="file" accept=".csv,.txt,.xlsx,.xls,.pdf" hidden
                   onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; onFileChosen(f); }} />
                 {busyLabel ? (
                   <><Spinner /> <div className="dz-title">{busyLabel}</div></>
                 ) : (
                   <>
                     <div className="dz-title">Drop your statement file here, or click to browse</div>
-                    <div className="dz-sub">CSV or TXT export from your bank app — GTB, Kuda, OPay, Access, Moniepoint etc. (max 3 MB)</div>
+                    <div className="dz-sub">CSV, Excel or PDF export from your bank app — GTB, Kuda, OPay, Access, Moniepoint etc. (max 4 MB)</div>
                   </>
                 )}
               </div>
-              <p className="hp-note">In your bank app: <b>Statement → Export → CSV</b>, then drop the file here. Date, description and amount columns are detected automatically; anything already in your ledger is flagged as a duplicate and skipped unless you tick it.</p>
+              <p className="hp-note">In your bank app go to <b>Statement → Export</b> and drop the file here — CSV, Excel or PDF all work. Dates, narrations and amounts are detected automatically, categories are suggested, and anything already in your ledger is flagged as a duplicate and skipped unless you tick it.</p>
             </>
           ) : (
             <>
