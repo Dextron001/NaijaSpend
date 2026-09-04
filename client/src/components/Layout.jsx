@@ -57,6 +57,7 @@ export default function Layout({ children }) {
                 <div className="user-email">{user?.email}</div>
               </div>
             </div>
+            <div className="sidebar-version">v1.4.0</div>
           </div>
         </aside>
 

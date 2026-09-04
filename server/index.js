@@ -23,6 +23,7 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
 const api = express.Router();
+api.get('/health', (req, res) => res.json({ ok: true, version: '1.4.0' }));
 api.use('/auth', authRoutes);
 api.use('/categories', categoriesRoutes);
 api.use('/transactions', transactionsRoutes);
@@ -63,5 +64,5 @@ try {
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, '0.0.0.0', () => {
-  console.log(`✅ NaijaSpend running → open http://localhost:${port} in your browser`);
+  console.log(`✅ NaijaSpend v1.4.0 running → open http://localhost:${port} in your browser`);
 });

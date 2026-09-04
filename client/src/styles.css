@@ -77,6 +77,7 @@ input, select { font-family: inherit; }
 .nav-item:hover { background: rgba(255, 255, 255, .06); color: #fff; }
 .nav-item.active { background: rgba(110, 231, 168, .14); color: #fff; box-shadow: inset 3px 0 0 #6ee7a8; }
 .sidebar-foot { padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .09); }
+.sidebar-version { color: #6d8677; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin-top: 10px; }
 .user-chip { display: flex; gap: 10px; align-items: center; }
 .avatar {
   width: 36px; height: 36px; border-radius: 50%; background: #1d5c39; color: #a7f3c6;

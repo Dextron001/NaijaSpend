@@ -1,8 +1,8 @@
 {
   "name": "naijaspend",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "private": true,
-  "description": "NaijaSpend — personal finance tracker with AI insights (₦)",
+  "description": "NaijaSpend \u2014 personal finance tracker with AI insights (\u20a6)",
   "type": "module",
   "scripts": {
     "setup": "npm --prefix server install && npm --prefix client install",
