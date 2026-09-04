@@ -35,6 +35,9 @@ coverage/
 # Documentation
 README.md
 
+# Render config
+render.yaml
+
 # Package lock files (will be used from copied versions)
 package-lock.json
 client/package-lock.json

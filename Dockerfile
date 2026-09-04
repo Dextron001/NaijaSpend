@@ -2,6 +2,7 @@
 FROM node:22-alpine AS client-builder
 
 WORKDIR /app/client
+
 ENV NODE_OPTIONS=--max-old-space-size=1536
 
 # Copy client package files
