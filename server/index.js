@@ -13,6 +13,9 @@ import insightsRoutes from './routes/insights.js';
 import assistantRoutes from './routes/assistant.js';
 import exportRoutes from './routes/export.js';
 import importRoutes from './routes/import.js';
+import recurrencesRoutes from './routes/recurrences.js';
+import reportsRoutes from './routes/reports.js';
+import receiptsRoutes from './routes/receipts.js';
 import { ensureDemoUser } from './seed.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +34,9 @@ api.use('/insights', insightsRoutes);
 api.use('/assistant', assistantRoutes);
 api.use('/export', exportRoutes);
 api.use('/import', importRoutes);
+api.use('/recurrences', recurrencesRoutes);
+api.use('/reports', reportsRoutes);
+api.use('/receipts', receiptsRoutes);
 api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use('/api', api);
 

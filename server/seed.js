@@ -1,5 +1,6 @@
 import { db, ensureDefaultCategories, wipeUserData } from './db.js';
 import { hashPassword, addMonths, currentMonth, todayISO, pad2 } from './util.js';
+import { computeNextRun } from './recurrence.js';
 
 // Deterministic-ish RNG so demo data looks plausible every time
 function mulberry32(a) {
@@ -115,6 +116,21 @@ export function seedDemoData(userId) {
   goalIns.run(userId, 'Emergency Fund', 1500000, 820000, `${addMonths(cur, 8)}-28`, '3 months of living expenses');
   goalIns.run(userId, 'New MacBook', 1850000, 460000, `${addMonths(cur, 10)}-28`, 'For design & dev work');
   goalIns.run(userId, 'Land in Lekki', 2500000, 310000, `${addMonths(cur, 14)}-28`, 'Small plot, big dreams 🏡');
+
+  // ---- recurring transactions (auto-log from their next due date onwards) ----
+  const recIns = db.prepare(
+    `INSERT INTO recurrences (user_id, type, amount, category_id, description, method, frequency, day, next_run)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const addRec = (type, catName, amount, desc, method, frequency, day) => {
+    if (!cats[catName]) return;
+    recIns.run(userId, type, amount, cats[catName], desc, method, frequency, day, computeNextRun(frequency, day, today));
+  };
+  addRec('expense', 'Rent', 120000, 'House rent', 'Transfer', 'monthly', 3);
+  addRec('expense', 'Entertainment', 7900, 'Netflix subscription', 'Card', 'monthly', 6);
+  addRec('expense', 'Data & Airtime', 20000, 'MTN data subscription', 'USSD', 'monthly', 2);
+  addRec('expense', 'Giving', 10000, 'Church offering / tithe', 'Transfer', 'monthly', 1);
+  addRec('income', 'Salary', 505000, 'Monthly salary — Lumina Tech Ltd', 'Transfer', 'monthly', 1);
 }
 
 export function ensureDemoUser() {

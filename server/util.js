@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db } from './db.js';
+import { runDueRecurrences } from './recurrence.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, 'data');
@@ -69,6 +70,10 @@ export function auth(req, res, next) {
   const user = db.prepare('SELECT id, name, email, currency, created_at FROM users WHERE id = ?').get(payload.sub);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   req.user = user;
+  // auto-log any due recurring transactions (cheap no-op when nothing is due)
+  try {
+    runDueRecurrences(user.id);
+  } catch { /* never block a request over this */ }
   next();
 }
 

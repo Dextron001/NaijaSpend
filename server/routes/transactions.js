@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { auth, wrap, bad, currentMonth, isValidMonth, isValidDate } from '../util.js';
+import { saveReceiptDataUrl, removeReceiptFile } from './receipts.js';
 
 const router = Router();
 router.use(auth);
@@ -72,8 +73,33 @@ router.put('/:id', wrap((req, res) => {
 }));
 
 router.delete('/:id', wrap((req, res) => {
-  const r = db.prepare('DELETE FROM transactions WHERE id = ? AND user_id = ?').run(Number(req.params.id), req.user.id);
-  if (r.changes === 0) return bad(res, 'Transaction not found.', 404);
+  const existing = db.prepare('SELECT id, receipt FROM transactions WHERE id = ? AND user_id = ?').get(Number(req.params.id), req.user.id);
+  if (!existing) return bad(res, 'Transaction not found.', 404);
+  db.prepare('DELETE FROM transactions WHERE id = ?').run(existing.id);
+  removeReceiptFile(existing);
+  res.json({ ok: true });
+}));
+
+// ---- receipts ----
+router.put('/:id/receipt', wrap((req, res) => {
+  const tx = db.prepare('SELECT id, receipt FROM transactions WHERE id = ? AND user_id = ?').get(Number(req.params.id), req.user.id);
+  if (!tx) return bad(res, 'Transaction not found.', 404);
+  let name;
+  try {
+    name = saveReceiptDataUrl(tx.id, req.body?.dataUrl);
+  } catch (e) {
+    return bad(res, e.message, e.status || 400);
+  }
+  removeReceiptFile(tx); // remove previous file if replacing
+  db.prepare('UPDATE transactions SET receipt = ? WHERE id = ?').run(name, tx.id);
+  res.json({ receipt: name });
+}));
+
+router.delete('/:id/receipt', wrap((req, res) => {
+  const tx = db.prepare('SELECT id, receipt FROM transactions WHERE id = ? AND user_id = ?').get(Number(req.params.id), req.user.id);
+  if (!tx) return bad(res, 'Transaction not found.', 404);
+  removeReceiptFile(tx);
+  db.prepare('UPDATE transactions SET receipt = NULL WHERE id = ?').run(tx.id);
   res.json({ ok: true });
 }));
 

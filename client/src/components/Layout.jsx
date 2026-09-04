@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import {
   IconDashboard, IconReceipt, IconWallet, IconTarget, IconSparkles, IconSettings,
-  IconLogout, IconPlus,
+  IconLogout, IconPlus, IconRepeat, IconReport,
 } from './Icons.jsx';
 import TxModal from './TxModal.jsx';
 
@@ -16,6 +16,8 @@ const NAV = [
   { to: '/transactions', label: 'Transactions', icon: IconReceipt },
   { to: '/budgets', label: 'Budgets', icon: IconWallet },
   { to: '/goals', label: 'Goals', icon: IconTarget },
+  { to: '/recurring', label: 'Recurring', icon: IconRepeat },
+  { to: '/reports', label: 'Reports', icon: IconReport },
   { to: '/insights', label: 'AI Insights', icon: IconSparkles },
   { to: '/settings', label: 'Settings', icon: IconSettings },
 ];
@@ -65,6 +67,7 @@ export default function Layout({ children }) {
             </div>
             <div className="topbar-actions">
               <button className="btn btn-primary" onClick={() => openTx()}><IconPlus size={16} /> Add Transaction</button>
+              <button className="icon-btn" onClick={() => navigate('/settings')} title="Settings"><IconSettings size={17} /></button>
               <button className="icon-btn hide-mobile" onClick={logout} title="Log out"><IconLogout size={17} /></button>
             </div>
           </header>
@@ -72,9 +75,9 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="bottomnav mobile-only">
-          {NAV.slice(0, 5).map(({ to, label, icon: Icon }) => (
+          {NAV.slice(0, 7).map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `bn-item ${isActive ? 'active' : ''}`}>
-              <Icon size={20} />
+              <Icon size={19} />
               <span>{label.split(' ')[0]}</span>
             </NavLink>
           ))}

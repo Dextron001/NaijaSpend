@@ -4,7 +4,7 @@ import { currentMonth, fmtSmart, fmt0, fmtDateShort } from '../format.js';
 import { Loading, EmptyState, ErrorNote } from '../components/ui.jsx';
 import { useTxModal } from '../components/Layout.jsx';
 import ImportModal from '../components/ImportModal.jsx';
-import { IconSearch, IconPencil, IconTrash, IconDownload, IconChevronLeft, IconChevronRight, IconPlus } from '../components/Icons.jsx';
+import { IconSearch, IconPencil, IconTrash, IconDownload, IconChevronLeft, IconChevronRight, IconPlus, IconPaperclip } from '../components/Icons.jsx';
 
 export default function Transactions() {
   const [month, setMonth] = useState(currentMonth());
@@ -45,6 +45,18 @@ export default function Transactions() {
     if (!window.confirm(`Delete "${t.description || t.category_name}" (${fmtSmart(t.amount)})?`)) return;
     try { await api('/transactions/' + t.id, { method: 'DELETE' }); load(); }
     catch (e) { setError(e.message); }
+  };
+
+  const viewReceipt = async (t) => {
+    try {
+      const token = localStorage.getItem('ns_token');
+      const res = await fetch(`/api/receipts/${t.id}`, { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) throw new Error('Could not load the receipt.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) { setError(e.message); }
   };
 
   const exportCsv = async () => {
@@ -127,6 +139,7 @@ export default function Transactions() {
                   <td className="muted hide-mobile">{t.method}</td>
                   <td className={`num tx-amount ${t.type}`}>{t.type === 'income' ? '+' : '−'}{fmtSmart(t.amount)}</td>
                   <td className="row-actions">
+                    {t.receipt && <button className="icon-btn" title="View receipt" onClick={() => viewReceipt(t)}><IconPaperclip size={15} /></button>}
                     <button className="icon-btn" title="Edit" onClick={() => openTx(t)}><IconPencil size={15} /></button>
                     <button className="icon-btn danger" title="Delete" onClick={() => remove(t)}><IconTrash size={15} /></button>
                   </td>

@@ -30,3 +30,8 @@ export const IconBot = (p) => <Svg {...p}><rect x="4" y="8" width="16" height="1
 export const IconCalendar = (p) => <Svg {...p}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></Svg>;
 export const IconArrowUpRight = (p) => <Svg {...p}><path d="M7 17L17 7" /><path d="M8 7h9v9" /></Svg>;
 export const IconArrowDownRight = (p) => <Svg {...p}><path d="M7 7l10 10" /><path d="M17 8v9H8" /></Svg>;
+export const IconRepeat = (p) => <Svg {...p}><path d="M17 2l4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="M7 22l-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></Svg>;
+export const IconReport = (p) => <Svg {...p}><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20H2" /></Svg>;
+export const IconPaperclip = (p) => <Svg {...p}><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></Svg>;
+export const IconPause = (p) => <Svg {...p}><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></Svg>;
+export const IconPlay = (p) => <Svg {...p}><path d="M7 4l13 8-13 8V4z" /></Svg>;

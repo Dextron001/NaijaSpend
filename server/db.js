@@ -70,10 +70,32 @@ CREATE TABLE IF NOT EXISTS chat_log (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS recurrences (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('income','expense')),
+  amount REAL NOT NULL CHECK (amount > 0),
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  description TEXT NOT NULL DEFAULT '',
+  method TEXT NOT NULL DEFAULT 'Transfer',
+  frequency TEXT NOT NULL CHECK (frequency IN ('monthly','weekly')),
+  day INTEGER NOT NULL,
+  next_run TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  last_created TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_tx_user_date ON transactions(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_cat_user ON categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_budget_user_month ON budgets(user_id, month);
+CREATE INDEX IF NOT EXISTS idx_rec_user ON recurrences(user_id, active, next_run);
 `);
+
+// light-weight migration: add receipt column to existing databases
+try {
+  db.exec("ALTER TABLE transactions ADD COLUMN receipt TEXT;");
+} catch { /* column already exists */ }
 
 export const DEFAULT_CATEGORIES = [
   { name: 'Food & Groceries', type: 'expense', icon: '🍲', color: '#f59e0b' },

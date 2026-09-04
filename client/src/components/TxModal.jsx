@@ -6,6 +6,30 @@ import { txChanged } from './Layout.jsx';
 
 const METHODS = ['Transfer', 'Card', 'Cash', 'USSD', 'POS'];
 
+/** Downscale an image file in the browser so uploads stay small (~100–300 KB). */
+function compressImage(file, maxDim = 1400, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const scale = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read that image.')); };
+    img.src = url;
+  });
+}
+
 export default function TxModal({ open, onClose, edit = null, onSaved }) {
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -16,11 +40,15 @@ export default function TxModal({ open, onClose, edit = null, onSaved }) {
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setError('');
     setSaving(false);
+    setUploading(false);
+    setReceiptUrl(edit?.receipt ? `/api/receipts/${edit.id}?token=${encodeURIComponent(localStorage.getItem('ns_token') || '')}&v=${Date.now()}` : null);
     api('/categories').then((d) => {
       setCategories(d.categories);
       if (edit) {
@@ -42,6 +70,51 @@ export default function TxModal({ open, onClose, edit = null, onSaved }) {
   }, [open, edit]);
 
   const options = categories.filter((c) => c.type === type);
+
+  const onReceiptFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !edit) return;
+    setUploading(true);
+    setError('');
+    try {
+      const dataUrl = await compressImage(file);
+      const d = await api(`/transactions/${edit.id}/receipt`, { method: 'PUT', body: { dataUrl } });
+      setReceiptUrl(`/api/receipts/${edit.id}?token=${encodeURIComponent(localStorage.getItem('ns_token') || '')}&v=${Date.now()}`);
+      edit.receipt = d.receipt;
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeReceipt = async () => {
+    if (!edit) return;
+    setUploading(true);
+    setError('');
+    try {
+      await api(`/transactions/${edit.id}/receipt`, { method: 'DELETE' });
+      setReceiptUrl(null);
+      edit.receipt = null;
+      txChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+  const viewReceipt = async () => {
+    try {
+      const token = localStorage.getItem('ns_token');
+      const res = await fetch(`/api/receipts/${edit.id}`, { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) throw new Error('Could not load the receipt.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) { setError(err.message); }
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -102,6 +175,32 @@ export default function TxModal({ open, onClose, edit = null, onSaved }) {
             {METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
+
+        {edit ? (
+          <div className="field">
+            <span>Receipt</span>
+            {receiptUrl ? (
+              <div className="receipt-preview">
+                <img src={receiptUrl} alt="Receipt" onClick={viewReceipt} title="Click to view full size" />
+                <div className="receipt-actions">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={viewReceipt}>View</button>
+                  <button type="button" className="btn btn-danger-ghost btn-sm" onClick={removeReceipt} disabled={uploading}>Remove</button>
+                </div>
+              </div>
+            ) : (
+              <div className="receipt-upload">
+                <input type="file" accept="image/*" hidden id="receipt-file-input" onChange={onReceiptFile} />
+                <button type="button" className="btn btn-soft btn-sm" disabled={uploading}
+                  onClick={() => document.getElementById('receipt-file-input')?.click()}>
+                  {uploading ? 'Uploading…' : '📎 Attach photo'}
+                </button>
+                <span className="muted receipt-hint">JPEG/PNG — compressed automatically</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="hp-note">📎 You can attach a receipt after saving — just edit the transaction.</p>
+        )}
 
         <ErrorNote>{error}</ErrorNote>
         <div className="form-actions">

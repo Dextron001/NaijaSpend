@@ -21,6 +21,9 @@ your *actual* numbers.
 | 🤖 **AI Insights** | Financial health score (0–100 with breakdown), spending anomaly detection, unusually-large-transaction flags, month-over-month movers, next-month forecast, suggested budgets (one-click apply), personalised Nigerian-context tips |
 | 💬 **Naija AI chat** | Ask things like *"How much did I spend on Transport?"*, *"Can I afford 150k for a laptop?"*, *"What's my savings rate?"*, *"How much did I spend last month?"* — answered from your real data |
 | 📥 **Bank-alert import** | Paste GTB / Kuda / OPay / Access / Moniepoint-style debit & credit alert texts — amounts, dates, types and narrations are auto-detected, categories auto-suggested, review & import in one click |
+| 🔁 **Recurring transactions** | Rules for rent, salary, subscriptions, tithe — auto-logged on schedule (monthly/weekly), with automatic catch-up for missed periods, pause/resume, and "log now" |
+| 📊 **Reports** | 12-month income vs spending chart, month-by-month table with savings rates, category × month breakdown, averages and best-month stats |
+| 🧾 **Receipt photos** | Attach a photo to any transaction — compressed in the browser, stored server-side, viewable with one tap |
 | 📱 **Installable (PWA)** | Add NaijaSpend to your phone's home screen; app shell cached for offline loading |
 | ₦ **Naija-first** | Naira formatting everywhere, categories like *Data & Airtime*, *Utilities (NEPA/diesel)*, demo data with Mile 12 market runs and Bolt rides |
 
@@ -36,6 +39,9 @@ The intelligence is a **self-contained insight engine** (`server/insights.js` + 
 - **Alert parsing** — the bank-alert importer uses layered heuristics (currency markers, 2-decimal
   amounts, verb phrasing, balance exclusion) plus a merchant-keyword auto-categorizer, with a
   confidence score shown per parsed row.
+- **Recurring engine** — each rule keeps a `next_run` pointer; on your next API call after any due
+  date, missed transactions are back-filled with their correct dates (idempotent, capped at 60
+  iterations, day-of-month clamped for short months).
 - **Health score** — weighted composite of savings rate (40), budget adherence (25), spending
   consistency (15), income trend (10) and goal progress (10).
 - **Forecast** — linear regression over completed months, clamped to a sane band.
@@ -122,6 +128,9 @@ GET/POST/PUT/DELETE /api/goals[/:id]         POST /api/goals/:id/contribute
 GET    /api/dashboard?month=                GET  /api/insights?month=
 POST   /api/assistant { message, history }  GET  /api/export (CSV)
 POST   /api/import/parse { text }           POST /api/import/commit { items }
+GET/POST/PUT/DELETE /api/recurrences[/:id]   POST /api/recurrences/:id/toggle|run-now
+GET    /api/reports?months=12               PUT/DELETE /api/transactions/:id/receipt
+GET    /api/receipts/:txId[?token=]
 ```
 
 ---
