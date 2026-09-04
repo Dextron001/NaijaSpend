@@ -1,1 +1,123 @@
-# NaijaSpend
+# 💚 NaijaSpend
+
+**A personal finance tracker with AI insights — built for how money moves in Naija.** ₦
+
+Track every Naira, budget by category, set savings goals, and let the built-in AI engine turn
+your ledger into plain-language advice: spending anomaly alerts, next-month forecasts, a
+financial health score, personalised tips, and an assistant chat that answers questions with
+your *actual* numbers.
+
+---
+
+## ✨ Features
+
+| Area | What you get |
+|---|---|
+| 🔐 **Auth** | Email/password sign-up & login (scrypt hashing + JWT), one-click seeded demo account |
+| 🧾 **Transactions** | Full CRUD, categories with emoji + colour, payment methods (Transfer/Card/Cash/USSD/POS), search, filters, pagination, CSV export |
+| 🎯 **Budgets** | Monthly limits per category with live progress bars, over-budget warnings, carry-over helper |
+| 🏁 **Goals** | Savings goals with targets, deadlines, progress tracking and quick contributions |
+| 📊 **Dashboard** | Income/spending/net/savings-rate stat cards, 6-month income-vs-spend chart, category donut, budget snapshot, recent activity |
+| 🤖 **AI Insights** | Financial health score (0–100 with breakdown), spending anomaly detection, unusually-large-transaction flags, month-over-month movers, next-month forecast, suggested budgets (one-click apply), personalised Nigerian-context tips |
+| 💬 **Naija AI chat** | Ask things like *"How much did I spend on Transport?"*, *"Can I afford 150k for a laptop?"*, *"What's my savings rate?"*, *"Forecast next month"* — answered from your real data |
+| ₦ **Naija-first** | Naira formatting everywhere, categories like *Data & Airtime*, *Utilities (NEPA/diesel)*, demo data with Mile 12 market runs and Bolt rides |
+
+### How the AI works
+
+The intelligence is a **self-contained insight engine** (`server/insights.js` + `server/assistant.js`)
+— no API key or internet required:
+
+- **Run-rate-aware projections** — mid-month numbers are projected using actual pace *blended*
+  with your historical average, so day-3 spikes (rent!) don't produce silly forecasts.
+- **Anomaly detection** — a category is flagged when its projected spend runs ≥ 30% above your
+  trailing average; single transactions ≥ 2× your category norm are surfaced too.
+- **Health score** — weighted composite of savings rate (40), budget adherence (25), spending
+  consistency (15), income trend (10) and goal progress (10).
+- **Forecast** — linear regression over completed months, clamped to a sane band.
+- **Assistant** — an intent-matching rules engine that computes answers from your ledger.
+
+**Optional LLM upgrade:** set `OPENAI_API_KEY` (plus optional `OPENAI_BASE_URL`, `OPENAI_MODEL`,
+e.g. for any OpenAI-compatible endpoint) and the chat automatically uses an LLM with your compact
+financial context as grounding — falling back to the rules engine on any error.
+
+---
+
+## 🚀 Quick start
+
+Requires **Node.js ≥ 22.5** (uses the built-in `node:sqlite`).
+
+```bash
+npm run setup     # install server + client dependencies
+npm run build     # build the React frontend into server/public
+npm start         # start the app on http://localhost:3000
+```
+
+Then open **http://localhost:3000**.
+
+**Try it instantly:** click *"⚡ Try the instant demo"* on the login page — you get a fresh
+account seeded with 6 months of realistic Nigerian transactions, budgets and goals.
+
+Pre-made demo login: `demo@naijaspend.ng` / `demo1234`
+
+### Development mode
+
+```bash
+npm run dev:server        # API on :3000
+npm run dev:client        # Vite dev server on :5173 (proxies /api → :3000)
+```
+
+### Configuration (all optional)
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `PORT` | `3000` | HTTP port |
+| `JWT_SECRET` | random, persisted to `server/data/.secret` | Token signing secret |
+| `OPENAI_API_KEY` | — | Enables LLM-powered assistant chat |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model name |
+
+---
+
+## 🗄️ Tech stack
+
+- **Backend** — Node.js, Express, SQLite via `node:sqlite`, zero-native-dependency JWT (HMAC-SHA256) & scrypt password hashing
+- **Frontend** — React 18, React Router, Recharts, Vite, hand-rolled CSS design system
+- **Data** — single SQLite file at `server/data/naijaspend.db` (WAL mode). Delete it to reset the world.
+
+## 📁 Project structure
+
+```
+├── server/
+│   ├── index.js            # Express app + static hosting of the built frontend
+│   ├── db.js               # SQLite schema, default categories, helpers
+│   ├── util.js             # JWT, scrypt, auth middleware, date helpers
+│   ├── insights.js         # 🤖 AI insight engine (scores, anomalies, forecasts, tips)
+│   ├── assistant.js        # 🤖 Chat assistant (rules engine + optional LLM)
+│   ├── seed.js             # Demo data generator
+│   ├── routes/             # auth, transactions, budgets, goals, dashboard, insights, assistant, export
+│   └── public/             # built frontend (generated by `npm run build`)
+└── client/
+    └── src/
+        ├── pages/          # Login, Dashboard, Transactions, Budgets, Goals, Insights, Settings
+        ├── components/     # Layout, charts, icons, modals, widgets
+        └── …               # auth context, API client, formatting, design system CSS
+```
+
+## 🔌 API overview
+
+All routes are under `/api` and (except auth) require `Authorization: Bearer <token>`.
+
+```
+POST   /api/auth/register|login|demo        POST /api/auth/demo-data     DELETE /api/auth/data
+GET    /api/auth/me                         PUT  /api/auth/me|password
+GET/POST/DELETE  /api/categories[/:id]
+GET/POST/PUT/DELETE /api/transactions[/:id]  (filters: month, type, category_id, q, page)
+GET/POST/DELETE  /api/budgets[/:id]?month=YYYY-MM
+GET/POST/PUT/DELETE /api/goals[/:id]         POST /api/goals/:id/contribute
+GET    /api/dashboard?month=                GET  /api/insights?month=
+POST   /api/assistant { message, history }  GET  /api/export (CSV)
+```
+
+---
+
+Built with 💚 — Naija to the world. 🇳🇬
