@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build output (will be regenerated)
+client/dist/
+server/public/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test and dev files
+*.test.js
+*.spec.js
+coverage/
+
+# Documentation
+README.md
+
+# Render config
+render.yaml
+
+# Package lock files (will be used from copied versions)
+package-lock.json
+client/package-lock.json
+server/package-lock.json
